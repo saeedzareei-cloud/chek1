@@ -1,0 +1,272 @@
+-- =====================================================
+-- دیتابیس فروش اقساطی قبور
+-- نام دیتابیس: chek
+-- =====================================================
+
+-- ایجاد دیتابیس
+CREATE DATABASE IF NOT EXISTS chek
+CHARACTER SET utf8mb4 
+COLLATE utf8mb4_persian_ci;
+
+USE chek;
+
+-- =====================================================
+-- جدول کاربران (users)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    access_level ENUM('مدیر سیستم', 'جانشین مدیر', 'کاربر', 'مباشر') NOT NULL,
+    signature_image VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE,
+    last_login DATETIME,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_persian_ci;
+
+-- =====================================================
+-- جدول دسترسی‌های منوها (menu_permissions)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS menu_permissions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    menu_name VARCHAR(100) NOT NULL,
+    can_access BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_menu (user_id, menu_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_persian_ci;
+
+-- =====================================================
+-- جدول قطعات (sections)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS sections (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    floor_count INT NOT NULL DEFAULT 1,
+    base_price DECIMAL(15,0) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_persian_ci;
+
+-- =====================================================
+-- جدول آرامگاه‌ها (tombs)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS tombs (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    tomb_number VARCHAR(50) UNIQUE NOT NULL,
+    grave_count INT NOT NULL DEFAULT 1,
+    row_position ENUM('جلو', 'پشت') NOT NULL DEFAULT 'جلو',
+    facade ENUM('دارد', 'ندارد') NOT NULL DEFAULT 'ندارد',
+    price DECIMAL(15,0) NOT NULL,
+    is_available BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_persian_ci;
+
+-- =====================================================
+-- جدول مشتریان (customers)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS customers (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    national_code VARCHAR(10) UNIQUE NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    father_name VARCHAR(100),
+    mobile VARCHAR(11) NOT NULL,
+    address TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_persian_ci;
+
+-- =====================================================
+-- جدول درخواست‌ها (requests)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS requests (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    request_number VARCHAR(20) UNIQUE NOT NULL,
+    request_date DATE NOT NULL,
+    customer_id INT NOT NULL,
+    registrar_user_id INT NOT NULL,
+    verifier_user_id INT,
+    status ENUM('در حال تکمیل', 'ارجاع برای امضا', 'تایید شده', 'رد شده') DEFAULT 'در حال تکمیل',
+    total_amount DECIMAL(15,0) DEFAULT 0,
+    cash_percent DECIMAL(5,2) DEFAULT 0,
+    cash_amount DECIMAL(15,0) DEFAULT 0,
+    check_amount DECIMAL(15,0) DEFAULT 0,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    verified_at DATETIME,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE RESTRICT,
+    FOREIGN KEY (registrar_user_id) REFERENCES users(id) ON DELETE RESTRICT,
+    FOREIGN KEY (verifier_user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_persian_ci;
+
+-- =====================================================
+-- جدول اقلام خریداری شده (request_items)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS request_items (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    request_id INT NOT NULL,
+    item_type ENUM('قبر', 'آرامگاه') NOT NULL,
+    section_id INT,
+    tomb_id INT,
+    row_number VARCHAR(20),
+    grave_number VARCHAR(20),
+    floor_count INT DEFAULT 1,
+    price DECIMAL(15,0) NOT NULL,
+    file_creation_fee DECIMAL(15,0) DEFAULT 0,
+    stone_reservation_fee DECIMAL(15,0) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE,
+    FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE SET NULL,
+    FOREIGN KEY (tomb_id) REFERENCES tombs(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_persian_ci;
+
+-- =====================================================
+-- جدول چک‌ها (checks)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS checks (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    request_id INT NOT NULL,
+    check_number VARCHAR(50) NOT NULL,
+    bank_name VARCHAR(100),
+    due_date DATE NOT NULL,
+    original_due_date DATE NOT NULL,
+    amount DECIMAL(15,0) NOT NULL,
+    drawer_national_code VARCHAR(10),
+    drawer_full_name VARCHAR(100),
+    drawer_father_name VARCHAR(100),
+    drawer_mobile VARCHAR(11),
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_persian_ci;
+
+-- =====================================================
+-- جدول قراردادها (contracts)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS contracts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    request_id INT UNIQUE NOT NULL,
+    contract_text TEXT,
+    manager_signature VARCHAR(255),
+    registrar_signature VARCHAR(255),
+    verifier_signature VARCHAR(255),
+    printed_date DATETIME,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_persian_ci;
+
+-- =====================================================
+-- جدول تنظیمات (settings)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS settings (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    setting_key VARCHAR(100) UNIQUE NOT NULL,
+    setting_value TEXT,
+    setting_type ENUM('text', 'number', 'image', 'textarea') DEFAULT 'text',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_persian_ci;
+
+-- =====================================================
+-- جدول روزهای تعطیل (holidays)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS holidays (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    holiday_date DATE NOT NULL UNIQUE,
+    description VARCHAR(200),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_persian_ci;
+
+-- =====================================================
+-- جدول لاگ فعالیت‌ها (activity_logs) - اختیاری
+-- =====================================================
+CREATE TABLE IF NOT EXISTS activity_logs (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT,
+    action VARCHAR(255) NOT NULL,
+    ip_address VARCHAR(45),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_persian_ci;
+
+-- =====================================================
+-- درج اطلاعات پیش‌فرض
+-- =====================================================
+
+-- کاربر مدیر پیش‌فرض (رمز عبور: 123456)
+INSERT INTO users (username, password, full_name, access_level, is_active) VALUES
+('admin', '$2y$10$YourHashedPasswordHere', 'مدیر سیستم', 'مدیر سیستم', 1);
+
+-- تنظیمات پیش‌فرض
+INSERT INTO settings (setting_key, setting_value, setting_type) VALUES
+('organization_name', 'سازمان مدیریت آرامستانهای شهرداری کرج', 'text'),
+('site_title', 'سیستم فروش اقساطی قبور', 'text'),
+('address', 'کرج - بلوار امام خمینی', 'text'),
+('phone', '026-12345678', 'text'),
+('file_creation_fee', '500000', 'number'),
+('stone_reservation_fee', '300000', 'number'),
+('tax_percent', '0', 'number'),
+('logo_path', '', 'image'),
+('stamp_path', '', 'image'),
+('signature_path', '', 'image'),
+('contract_text', 'متن پیش‌فرض قرارداد...', 'textarea');
+
+-- نمونه قطعات
+INSERT INTO sections (name, floor_count, base_price, description) VALUES
+('قطعه یک', 1, 50000000, 'قطعه شماره یک - نزدیک ورودی'),
+('قطعه دو', 2, 45000000, 'قطعه شماره دو'),
+('قطعه سه', 3, 40000000, 'قطعه شماره سه');
+
+-- نمونه آرامگاه‌ها
+INSERT INTO tombs (tomb_number, grave_count, row_position, facade, price, is_available) VALUES
+('A-101', 1, 'جلو', 'دارد', 150000000, 1),
+('A-102', 2, 'پشت', 'ندارد', 280000000, 1),
+('B-201', 1, 'جلو', 'دارد', 160000000, 1);
+
+-- نمونه مشتری
+INSERT INTO customers (national_code, full_name, father_name, mobile, address) VALUES
+('1234567890', 'علی محمدی', 'محمد', '09123456789', 'کرج - عظیمیه');
+
+-- =====================================================
+-- ایندکس‌ها برای بهبود کارایی
+-- =====================================================
+
+CREATE INDEX idx_requests_customer ON requests(customer_id);
+CREATE INDEX idx_requests_registrar ON requests(registrar_user_id);
+CREATE INDEX idx_requests_status ON requests(status);
+CREATE INDEX idx_requests_date ON requests(request_date);
+CREATE INDEX idx_request_items_request ON request_items(request_id);
+CREATE INDEX idx_checks_request ON checks(request_id);
+CREATE INDEX idx_checks_due_date ON checks(due_date);
+CREATE INDEX idx_tombs_available ON tombs(is_available);
+CREATE INDEX idx_users_username ON users(username);
+CREATE INDEX idx_users_active ON users(is_active);
+CREATE INDEX idx_customers_national ON customers(national_code);
+CREATE INDEX idx_customers_mobile ON customers(mobile);
+CREATE INDEX idx_holidays_date ON holidays(holiday_date);
+
+-- =====================================================
+-- نمایش جداول ایجاد شده
+-- =====================================================
+SHOW TABLES;
+
+-- =====================================================
+-- جدول بانک‌ها (banks)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS banks (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(150) NOT NULL UNIQUE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_persian_ci;
+
+-- (اختیاری) اگر می‌خواهید در جدول checks به جای bank_name از bank_id استفاده کنید:
+-- ALTER TABLE checks ADD COLUMN bank_id INT NULL AFTER bank_name;
+-- ALTER TABLE checks ADD CONSTRAINT fk_checks_bank FOREIGN KEY (bank_id) REFERENCES banks(id) ON DELETE SET NULL;

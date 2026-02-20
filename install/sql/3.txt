@@ -1,0 +1,40 @@
+برای تولید رمز هش شده از این کد PHP استفاده کنید:
+
+echo password_hash('yourpassword', PASSWORD_DEFAULT);
+
+
+تنظیم مسیرها: در فایل includes/config.php مسیر BASE_URL را تنظیم کنید
+
+
+
+
+ایجاد پوشه‌های آپلود: پوشه‌های زیر را با دسترسی نوشتن ایجاد کنید:
+
+assets/uploads/logos
+
+assets/uploads/signatures
+
+assets/uploads/stamps
+
+
+
+تنظیم دسترسی (Permission) در ویندوز:
+در ویندوز، برای اطمینان از اینکه PHP می‌تواند در این پوشه‌ها فایل آپلود کند:
+
+روی پوشه uploads راست کلیک کنید → Properties
+
+به تب Security بروید
+
+روی Edit کلیک کنید
+
+User را انتخاب کنید (یا Everyone را اضافه کنید)
+
+در پایین، گزینه‌های زیر را تیک بزنید:
+
+Modify
+
+Write
+
+Read & Execute
+
+Apply و OK کنید
